@@ -27,6 +27,6 @@
     (let (buffer)
       (loop for i from 0 below length
             for bit = (mod i 8)
-            when (zerop i) do (setf buffer (read-le stream 1)) end
+            when (zerop bit) do (setf buffer (read-le stream 1)) end
             collect (if (logbitp bit buffer)
                       1 0))) 'bit-vector))
