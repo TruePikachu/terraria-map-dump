@@ -4,7 +4,10 @@
   :author "Chris Dusto <cricket_lover@live.com>"
   :bug-tracker "https://github.com/TruePikachu/terraria-map-dump/issues"
   :licence "MIT License"
-  :depends-on ()
+  :depends-on (:deflate :flexi-streams)
   :components ((:file "binary-reader")
                (:file "map-header"
-                      :depends-on ("binary-reader"))))
+                      :depends-on ("binary-reader"))
+               (:file "tile-reader"
+                      :depends-on ("binary-reader"
+                                   "map-header"))))
