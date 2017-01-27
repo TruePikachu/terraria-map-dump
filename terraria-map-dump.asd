@@ -8,6 +8,8 @@
   :components ((:file "binary-reader")
                (:file "map-header"
                       :depends-on ("binary-reader"))
+               (:file "map-tile")
                (:file "tile-reader"
                       :depends-on ("binary-reader"
-                                   "map-header"))))
+                                   "map-header"
+                                   "map-tile"))))
