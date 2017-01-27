@@ -5,5 +5,6 @@
   :bug-tracker "https://github.com/TruePikachu/terraria-map-dump/issues"
   :licence "MIT License"
   :depends-on ()
-  :components ())
-
+  :components ((:file "binary-reader")
+               (:file "map-header"
+                      :depends-on ("binary-reader"))))
