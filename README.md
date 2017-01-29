@@ -8,4 +8,11 @@ Terraria Map Dumper
 ```common-lisp
 (defvar *map* (tmapdump:read-map #P"world.map"))  => *MAP*
 (tmapdump:render-png *map* #P"map.png")  => #P"map.png"
+(tmapdump:render-png *map* #P"biomes.png" :biome-spread)  => #P"biomes.png"
 ```
+
+## Map Render Types
+Functions which render a map to a file (such as `#'RENDER-PNG`) take an optional parameter `MAP-TYPE` which specifies what kind of map should be generated:
+
+* `:DEFAULT` - Default map generation, aims to be identical to in-game minimap
+* `:BIOME-SPREAD` - Corruption/Crimson/Hallow biome visualization; tiles belonging to the listed groups are rendered as normal (though at full brightness), tiles not in those groups are rendered in grayscale at 50% their normal transparency.
