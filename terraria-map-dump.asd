@@ -20,6 +20,10 @@
                                    "map-header"
                                    "map-tile"
                                    "tile-reader"))
+               (:file "render-png"
+                      :depends-on ("color"
+                                   "map"
+                                   "tile"))
                (:file "tile"
                       :depends-on ("binary-reader"
                                    "color"))
