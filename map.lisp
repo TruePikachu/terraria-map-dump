@@ -1,6 +1,8 @@
 (defpackage :terraria-map-dump.map
   (:nicknames :tmapdump.map)
-  (:use :common-lisp :deflate :flex :tmapdump.binary-reader :tmapdump.tile))
+  (:use :common-lisp :deflate :flex :tmapdump.binary-reader :tmapdump.tile)
+  (:export :minimap :minimap-data :minimap-file-revision :minimap-game-release
+           :minimap-world-name :minimap-world-id :read-map))
 (in-package :terraria-map-dump.map)
 
 (defstruct minimap
