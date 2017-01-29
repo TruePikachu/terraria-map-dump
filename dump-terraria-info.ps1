@@ -62,9 +62,8 @@ $Tiles = @("") * [Terraria.ID.TileID]::Count
 [Terraria.ID.TileID].GetFields() | Where-Object {$_.Name -ne "Count"} | ForEach-Object {
     $Tiles[$_.GetValue($null)] = New-Object -TypeName PSObject -Property ([Ordered] @{"Name"=$_.Name;"Sets"=@();"Colors"=@()})
 }
-@([Terraria.ID.TileID].GetNestedType("Sets").GetFields() +
-  [Terraria.ID.TileID].GetNestedType("Sets").GetNestedType("Conversion").GetFields() +
-  [Terraria.ID.TileID].GetNestedType("Sets").GetNestedType("RoomNeeds").GetFields()) | Where-Object {$_.FieldType -eq [System.Boolean[]]} `
+@([Terraria.ID.TileID+Sets].GetFields() +
+  [Terraria.ID.TileID+Sets+Conversion].GetFields()) | Where-Object {$_.FieldType -eq [Boolean[]]} `
   | Sort-Object -Property Name | ForEach-Object {
     $name = $_.Name
     $_.GetValue($null) | ForEach-Object -Begin { $i = 0 } -Process {
@@ -74,14 +73,21 @@ $Tiles = @("") * [Terraria.ID.TileID]::Count
         $i++
     }
 }
+@([Terraria.ID.TileID+Sets+RoomNeeds].GetFields()) | Where-Object {$_.FieldType -eq [Int32[]]} `
+  | Sort-Object -Property Name | ForEach-Object {
+    $name = $_.Name
+    $_.GetValue($null) | ForEach-Object {
+        $Tiles[$_].Sets += $name
+    }
+}
 
 ### Wall ID and category stuff
 $Walls = @("") * [Terraria.ID.WallID]::Count
 [Terraria.ID.WallID].GetFields() | Where-Object {$_.Name -ne "Count"} | ForEach-Object {
     $Walls[$_.GetValue($null)] = New-Object -TypeName PSObject -Property ([Ordered] @{"Name"=$_.Name;"Sets"=@();"Colors"=@()})
 }
-@([Terraria.ID.WallID].GetNestedType("Sets").GetFields() +
-  [Terraria.ID.WallID].GetNestedType("Sets").GetNestedType("Conversion").GetFields()) | Where-Object {$_.FieldType -eq [System.Boolean[]]} `
+@([Terraria.ID.WallID+Sets].GetFields() +
+  [Terraria.ID.WallID+Sets+Conversion].GetFields()) | Where-Object {$_.FieldType -eq [Boolean[]]} `
   | Sort-Object -Property Name | ForEach-Object {
     $name = $_.Name
     $_.GetValue($null) | ForEach-Object -Begin { $i = 0 } -Process {
