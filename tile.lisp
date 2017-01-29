@@ -2,7 +2,9 @@
   (:nicknames :tmapdump.tile)
   (:use :common-lisp :tmapdump.binary-reader :tmapdump.color)
   (:export :block-tile :empty-tile :fluid-tile :ground-tile :honey-tile
-           :lava-tile :read-tiles :set-game-info :sky-tile :tile
+           :lava-tile :make-block-tile :make-empty-tile :make-ground-tile
+           :make-honey-tile :make-lava-tile :make-sky-tile :make-wall-tile
+           :make-water-tile :read-tiles :set-game-info :sky-tile :tile
            :tile-base-color :tile-id :tile-light-level :tile-name :tile-paint-id
            :tile-raw-rgba :tile-rgba :tile-sets :tile-variation :wall-tile
            :water-tile))
@@ -55,7 +57,8 @@
              (empty-tile #'make-empty-tile)
              (water-tile #'make-water-tile)
              (lava-tile #'make-lava-tile)
-             (honey-tile #'make-honey-tile))
+             (honey-tile #'make-honey-tile)
+             (sky-tile #'make-sky-tile))
            :paint (tile-paint this)
            :light light))
 (defmethod tile-light-level ((this tile))
@@ -141,7 +144,6 @@
   (variation 0 :type (unsigned-byte 8) :read-only t))
 (defmethod copy-tile-with-light ((this variant-tile) light)
   (funcall (etypecase this
-             (sky-tile #'make-sky-tile)
              (ground-tile #'make-ground-tile))
            :paint (variant-tile-paint this)
            :light light
@@ -245,8 +247,8 @@
                    for entry in info-list
                    for parsed = (multiple-value-list (parse-single-info entry))
                    collect (first parsed) into info
-                   append (loop for i from 1 below (second parsed)
-                                collect id) into mapper
+                   append (loop for i from 0 below (second parsed)
+                                collect (cons id i)) into mapper
                    finally (return
                              (values
                                (coerce info '(vector infos))

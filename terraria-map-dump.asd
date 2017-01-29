@@ -9,6 +9,9 @@
                (:file "color")
                (:file "game-info"
                       :depends-on ("map-header"))
+               (:file "map"
+                      :depends-on ("binary-reader"
+                                   "tile"))
                (:file "map-header"
                       :depends-on ("binary-reader"))
                (:file "map-tile")
