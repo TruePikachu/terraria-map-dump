@@ -16,3 +16,4 @@ Functions which render a map to a file (such as `#'RENDER-PNG`) take an optional
 
 * `:DEFAULT` - Default map generation, aims to be identical to in-game minimap
 * `:BIOME-SPREAD` - Corruption/Crimson/Hallow biome visualization; tiles belonging to the listed groups are rendered as normal (though at full brightness), tiles not in those groups are rendered in grayscale at 50% their normal transparency.
+* `:TREASURE` - Similar to above, but a number of specific blocks are at full brightness, and everything else is dulled out
