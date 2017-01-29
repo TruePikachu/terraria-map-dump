@@ -6,6 +6,7 @@
   :licence "MIT License"
   :depends-on (:deflate :flexi-streams :zpng)
   :components ((:file "binary-reader")
+               (:file "color")
                (:file "game-info"
                       :depends-on ("map-header"))
                (:file "map-header"
@@ -16,6 +17,9 @@
                                    "map-header"
                                    "map-tile"
                                    "tile-reader"))
+               (:file "tile"
+                      :depends-on ("binary-reader"
+                                   "color"))
                (:file "tile-reader"
                       :depends-on ("binary-reader"
                                    "map-header"

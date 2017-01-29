@@ -1,4 +1,5 @@
 (defpackage :terraria-map-dump.binary-reader
+  (:nicknames :tmapdump.binary-reader)
   (:use :common-lisp)
   (:export :read-array :read-bit-vector :read-le :read-string))
 (in-package :terraria-map-dump.binary-reader)
