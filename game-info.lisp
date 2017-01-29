@@ -33,42 +33,47 @@
   (hell-color (%rgba 0 0 0) :type rgba-color :read-only t))
 
 (defun get-game-info (map-header)
-  (destructuring-bind
-    (keywords offsets colors) (with-open-file
-                                (in (make-pathname
-                                      :name (format nil "~A"
-                                                    (map-header-game-release
-                                                      map-header))
-                                      :type "sexp"
-                                      :defaults (merge-pathnames
-                                                  #P"game-info/"
-                                                  (asdf:system-source-directory
-                                                    :terraria-map-dump)))
-                                    :if-does-not-exist :error)
-                                (read in))
-    (declare (ignore offsets))
-    (labels ((next-color () (destructuring-bind (r g b a) (pop colors)
-                              (%rgba r g b a)))
-             (read-variations
-               (variation-count)
-               (coerce
-                 (loop for i from 0 below variation-count
-                       collect (next-color)) '(vector rgba-color)))
-             (read-options
-               (option-counts)
-               (coerce
-                 (loop for count across option-counts
-                       collect (read-variations count))
-                 '(vector (vector rgba-color)))))
+  (labels ((parse-color
+             (color)
+             (destructuring-bind
+               (r g b a) color
+               (%rgba r g b a)))
+           (parse-color-list
+             (color-list)
+             (coerce (mapcar #'parse-color color-list)
+                     '(vector rgba-color))))
+    (let* ((root-game-info
+             (with-open-file
+               (in (make-pathname
+                     :name (format nil "~A"
+                                   (map-header-game-release
+                                     map-header))
+                     :type "sexp"
+                     :defaults (merge-pathnames
+                                 #P"game-info/"
+                                 (asdf:system-source-directory
+                                   :terraria-map-dump)))
+                   :if-does-not-exist :error)
+               (read in)))
+           (fluid-colors (parse-color-list
+                           (cdr (assoc :liquids root-game-info))))
+           (tile-info (cdr (assoc :tiles root-game-info)))
+           (wall-info (cdr (assoc :walls root-game-info))))
       (make-game-info
-        :unknown-color (next-color)
-        :tile-color (read-options (map-header-tile-option-counts map-header))
-        :tile-name (coerce keywords '(vector keyword))
-        :wall-color (read-options (map-header-wall-option-counts map-header))
-        :water-color (next-color)
-        :lava-color (next-color)
-        :honey-color (next-color)
-        :sky-color (read-variations (map-header-sky-type-count map-header))
-        :dirt-color (read-variations (map-header-dirt-type-count map-header))
-        :rock-color (read-variations (map-header-rock-type-count map-header))
-        :hell-color (next-color)))))
+        :unknown-color (parse-color (cdr (assoc :empty root-game-info)))
+        :tile-color (coerce (mapcar (lambda (v)
+                                      (parse-color-list
+                                        (third v))) tile-info)
+                            '(vector rgba-color))
+        :tile-name (coerce (mapcar #'first tile-info) '(vector keyword))
+        :wall-color (coerce (mapcar (lambda (v)
+                                      (parse-color-list
+                                        (third v))) wall-info)
+                            '(vector rgba-color))
+        :water-color (elt fluid-colors 0)
+        :lava-color (elt fluid-colors 1)
+        :honey-color (elt fluid-colors 2)
+        :sky-color (parse-color-list (cdr (assoc :sky root-game-info)))
+        :dirt-color (parse-color-list (cdr (assoc :dirt root-game-info)))
+        :rock-color (parse-color-list (cdr (assoc :rock root-game-info)))
+        :hell-color (parse-color (cdr (assoc :hell root-game-info)))))))

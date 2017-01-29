@@ -1,68 +1,154 @@
-﻿$TerrariaPath = "C:\Program Files (x86)\Steam\SteamApps\common\Terraria"
-
-# Load Terraria
-[Reflection.Assembly]::LoadFile($TerrariaPath+"\Terraria.exe") > $null
-# Load XNA
-[Reflection.Assembly]::LoadWithPartialName("Microsoft.Xna.Framework") > $null
-### Tile ID stuff
-$TileIDList = @{}
-[Terraria.ID.TileID].GetFields() | Where-Object {$_.Name -ne "Count"} | ForEach-Object {
-    $TileIDList.Add($_.Name,$_.GetValue($null))
-}
-### Color stuff
-# Populate color information for minimap
-[Terraria.Map.MapHelper]::Initialize()
-# Get the main color list
-$PrivateFields = [Terraria.Map.MapHelper].GetFields([Reflection.BindingFlags]"NonPublic,Static")
-$ColorLookup = ($PrivateFields | Where-Object {$_.Name -eq "colorLookup"}).GetValue($null)
-# Get the various positions
-$TilePosition = ($PrivateFields | Where-Object {$_.Name -eq "tilePosition"}).GetValue($null)
-$WallPosition = ($PrivateFields | Where-Object {$_.Name -eq "wallPosition"}).GetValue($null)
-$LiquidPosition = ($PrivateFields | Where-Object {$_.Name -eq "liquidPosition"}).GetValue($null)
-$SkyPosition = ($PrivateFields | Where-Object {$_.Name -eq "skyPosition"}).GetValue($null)
-$DirtPosition = ($PrivateFields | Where-Object {$_.Name -eq "dirtPosition"}).GetValue($null)
-$RockPosition = ($PrivateFields | Where-Object {$_.Name -eq "rockPosition"}).GetValue($null)
-$HellPosition = ($PrivateFields | Where-Object {$_.Name -eq "hellPosition"}).GetValue($null)
-# Get the variation counts for tiles
-$TileOptionCounts = [Terraria.Map.MapHelper]::tileOptionCounts
-
-<# Make the sexp for terraria-map-dump
- (TILE-NAME-LIST POSITION-LIST COLOR-LIST)
- TILE-NAME-LIST := NIL | (KEYWORD . TILE-NAME-LIST)
- POSITION-LIST := NIL | (INTEGER . POSITION-LIST)
- COLOR-LIST := NIL | (COLOR . COLOR-LIST)
- COLOR := (INTEGER INTEGER INTEGER INTEGER)
-#>
-function Get-LispName {
+﻿$TerrariaPath = "C:\Program Files (x86)\Steam\SteamApps\common\Terraria\"
+function Get-LispKeyword {
     Param(
-        [parameter(ValueFromPipeline)][string]$oldName
+        [parameter(ValueFromPipeline)][string]$OldName
     )
-    # Ensure the first character is lowercase
-    $lowerThenUpperName=($oldName[0].ToString().ToLower())+$oldName.Substring(1)
-    # At each capital letter, replace it with a dash then lowercase letter
-    $lower_lisp_name=[char[]]$lowerThenUpperName | ForEach-Object {
-        $input = $_.ToString()
-        If ($input -ceq $input.ToUpper()) {
-            "-"+$input.ToLower()
-        } Else { $input.ToString() }}
-    # Make the name capital
-    ($lower_lisp_name -join "").ToUpper()
+    Process {
+        # Make the first character lowercase
+        $lowerThenUpper = ($OldName[0].ToString().ToLower())+$OldName.Substring(1)
+        # At each capital letter, replace with dash and lowercase letter
+        $lower_lisp_name = [char[]]$lowerThenUpper | ForEach-Object {
+            $c = $_.ToString()
+            If ($c -ceq $c.ToUpper()) {
+                "-"+$c.ToLower()
+            } Else {
+                $c
+            }
+        }
+        # Capitalize the string and prefix a colon
+        $lisp_keyword = ":"+($lower_lisp_name -join "").ToUpper()
+        # Apply some corner-case replacements
+        $lisp_keyword -replace 'N-P-C-S','NPCS' `
+                      -replace 'N-P-C','NPC'
+    }
 }
-$tileListSexp = $TileIDList.GetEnumerator() | Sort-Object Value | ForEach-Object `
--begin {
-    $sexp = "("
-} -process {
-    $sexp += ":"+($_.Name | Get-LispName)+" "
-} -end {
-    $sexp.TrimEnd()+")"
+function New-LispCons {
+    Param(
+        [parameter(Mandatory)][string]$car,
+        [parameter(Mandatory)][string]$cdr
+    )
+    "({0} . {1})" -f $car,$cdr
 }
-$positionListSexp = "({0} {1} {2} {3} {4} {5} {6})" -f $TilePosition, $WallPosition, $LiquidPosition, $SkyPosition, $DirtPosition, $RockPosition, $HellPosition
-$colorListSexp = $ColorLookup | ForEach-Object `
--begin {
-    $sexp = "("
-} -process {
-    $sexp += "({0} {1} {2} {3})" -f $_.R,$_.G,$_.B,$_.A
-} -end {
-    $sexp+")"
+function New-LispList {
+    Param(
+        [parameter(ValueFromPipeline)][string[]]$Elements
+    )
+    "("+($Elements -join " ")+")"
 }
-$finalSexp = "({0}{1}{2})" -f $tileListSexp, $positionListSexp, $colorListSexp
+function New-LispAList {
+    Param(
+        [parameter(Mandatory)][hashtable]$Hash
+    )
+    New-LispList -Elements ($Hash.GetEnumerator() | ForEach-Object {
+        New-LispCons -car $_.Key -cdr $_.Value
+    })
+}
+function Get-LispColor {
+    Param(
+        [parameter(ValueFromPipeline,Mandatory)]$Color
+    )
+    Process {
+        New-LispList -Elements @($Color.R, $Color.G, $Color.B, $Color.A)
+    }
+}
+
+
+### Load Terraria
+[Reflection.Assembly]::LoadFile($TerrariaPath+"\Terraria.exe") >$null
+[Reflection.Assembly]::LoadWithPartialName("Microsoft.Xna.Framework") >$null
+
+### Tile ID and category stuff
+$Tiles = @("") * [Terraria.ID.TileID]::Count
+[Terraria.ID.TileID].GetFields() | Where-Object {$_.Name -ne "Count"} | ForEach-Object {
+    $Tiles[$_.GetValue($null)] = New-Object -TypeName PSObject -Property ([Ordered] @{"Name"=$_.Name;"Sets"=@();"Colors"=@()})
+}
+@([Terraria.ID.TileID].GetNestedType("Sets").GetFields() +
+  [Terraria.ID.TileID].GetNestedType("Sets").GetNestedType("Conversion").GetFields() +
+  [Terraria.ID.TileID].GetNestedType("Sets").GetNestedType("RoomNeeds").GetFields()) | Where-Object {$_.FieldType -eq [System.Boolean[]]} `
+  | Sort-Object -Property Name | ForEach-Object {
+    $name = $_.Name
+    $_.GetValue($null) | ForEach-Object -Begin { $i = 0 } -Process {
+        If ($_) {
+            $Tiles[$i].Sets += $name
+        }
+        $i++
+    }
+}
+
+### Wall ID and category stuff
+$Walls = @("") * [Terraria.ID.WallID]::Count
+[Terraria.ID.WallID].GetFields() | Where-Object {$_.Name -ne "Count"} | ForEach-Object {
+    $Walls[$_.GetValue($null)] = New-Object -TypeName PSObject -Property ([Ordered] @{"Name"=$_.Name;"Sets"=@();"Colors"=@()})
+}
+@([Terraria.ID.WallID].GetNestedType("Sets").GetFields() +
+  [Terraria.ID.WallID].GetNestedType("Sets").GetNestedType("Conversion").GetFields()) | Where-Object {$_.FieldType -eq [System.Boolean[]]} `
+  | Sort-Object -Property Name | ForEach-Object {
+    $name = $_.Name
+    $_.GetValue($null) | ForEach-Object -Begin { $i = 0 } -Process {
+        If ($_) {
+            $Walls[$i].Sets += $name
+        }
+        $i++
+    }
+}
+
+### Map color stuff
+## Setup
+[Terraria.Map.MapHelper]::Initialize()
+$Terraria_Map_MapHelper_ = [Terraria.Map.MapHelper].GetFields([Reflection.BindingFlags]"NonPublic,Static")
+$_colors = ($Terraria_Map_MapHelper_ | Where-Object {$_.Name -eq "colorLookup"}).GetValue($null)
+## Empty
+$EmptyColor = $_colors[0]
+## Tiles
+@([Terraria.Map.MapHelper]::tileLookup | ForEach-Object -Begin {$id = 0} -Process {
+    $base = $_
+    $count = [Terraria.Map.MapHelper]::tileOptionCounts[$id]
+    If ($count -gt 0) {
+        $Tiles[$id].Colors = [array]($_colors[$base..($base+$count-1)])
+    }
+    $id++
+})
+## Walls
+@([Terraria.Map.MapHelper]::wallLookup | ForEach-Object -Begin {$id = 0} -Process {
+    $base = $_
+    $count = [Terraria.Map.MapHelper]::wallOptionCounts[$id]
+    If ($count -gt 0) {
+        $Walls[$id].Colors = [array]($_colors[$base..($base+$count-1)])
+    }
+    $id++
+})
+## Others
+$_liquidPos = ($Terraria_Map_MapHelper_ | Where-Object {$_.Name -eq "liquidPosition"}).GetValue($null)
+$_skyPos = ($Terraria_Map_MapHelper_ | Where-Object {$_.Name -eq "skyPosition"}).GetValue($null)
+$_dirtPos = ($Terraria_Map_MapHelper_ | Where-Object {$_.Name -eq "dirtPosition"}).GetValue($null)
+$_rockPos = ($Terraria_Map_MapHelper_ | Where-Object {$_.Name -eq "rockPosition"}).GetValue($null)
+$_hellPos = ($Terraria_Map_MapHelper_ | Where-Object {$_.Name -eq "hellPosition"}).GetValue($null)
+$LiquidColors = $_colors[$_liquidPos..($_skyPos-1)]
+$SkyColors = $_colors[$_skyPos..($_dirtPos-1)]
+$DirtColors = $_colors[$_dirtPos..($_rockPos-1)]
+$RockColors = $_colors[$_rockPos..($_hellPos-1)]
+$HellColor = $_colors[$_hellPos]
+
+### Output
+New-LispAList -Hash @{
+    ":EMPTY" = $EmptyColor | Get-LispColor;
+    ":TILES" = (,@($Tiles | ForEach-Object {
+        New-LispList -Elements @(
+            (Get-LispKeyword -OldName $_.Name),
+            (New-LispList -Elements ([array]($_.Sets | Get-LispKeyword))),
+            (,@($_.Colors | Get-LispColor) | New-LispList)
+        )
+    }) | New-LispList);
+    ":WALLS" = (,@($Walls | ForEach-Object {
+        New-LispList -Elements @(
+            (Get-LispKeyword -OldName $_.Name),
+            (New-LispList -Elements ([array]($_.Sets | Get-LispKeyword))),
+            (,@($_.Colors | Get-LispColor) | New-LispList)
+        )
+    }) | New-LispList);
+    ":LIQUIDS" = (,@($LiquidColors | Get-LispColor) | New-LispList);
+    ":SKY" = (,@($SkyColors | Get-LispColor) | New-LispList);
+    ":DIRT" = (,@($DirtColors | Get-LispColor) | New-LispList);
+    ":ROCK" = (,@($RockColors | Get-LispColor) | New-LispList);
+    ":HELL" = $HellColor | Get-LispColor
+}
