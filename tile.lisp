@@ -159,9 +159,13 @@
              (:include tile))
   "Tile which displays sky or hell")
 (defmethod tile-base-color ((this sky-tile) &optional y profile)
-  ; TODO Better algorithm
-  (if (and y profile (> y (elevation-profile-rock-layer profile)))
-    *hell-color*
+  (if (and y profile)
+    (if (< y (elevation-profile-rock-layer profile))
+      (let ((color-count (length *sky-colors*)))
+        (elt *sky-colors*
+             (min (1- color-count)
+                  (round (* color-count (/ y (elevation-profile-world-surface profile)))))))
+      *hell-color*)
     (elt *sky-colors* 127)))
 (defmethod tile-name ((this sky-tile))
   :sky-or-hell)
@@ -169,9 +173,9 @@
              (:include variant-tile))
   "Tile which displays an underground background")
 (defmethod tile-base-color ((this ground-tile) &optional y profile)
-  ; TODO Better algorithm
-  (declare (ignore y profile))
-  (elt *rock-colors* (ground-tile-variation this)))
+  (elt (if (and y profile (< y (elevation-profile-rock-layer profile)))
+         *dirt-colors*
+         *rock-colors*) (ground-tile-variation this)))
 (defmethod tile-name ((this ground-tile))
   :underground)
 
