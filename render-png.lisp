@@ -1,7 +1,7 @@
 (defpackage :terraria-map-dump.render-png
   (:nicknames :tmapdump.render-png)
   (:use :common-lisp :tmapdump.color :tmapdump.map :tmapdump.tile :zpng)
-  (:export :render-png))
+  (:export :biome-spread-rgba :dull-tile-rgba :render-png :treasure-rgba))
 (in-package :terraria-map-dump.render-png)
 
 (defun dull-tile-rgba (tile y h)
@@ -65,25 +65,21 @@
     (dull-tile-rgba tile y h)))
 
 
-(defun render-png (map file-or-stream &optional (map-type :default))
+(defun render-png (map file-or-stream &optional (color-fn #'tile-rgba))
   "Render MAP to FILE-OR-STREAM"
   (etypecase file-or-stream
     (pathname (with-open-file (out file-or-stream
                                    :direction :output
                                    :if-exists :supersede
                                    :element-type '(unsigned-byte 8))
-                (render-png map out map-type)))
+                (render-png map out color-fn)))
     (stream
       (let* ((stream file-or-stream)
              (data (minimap-data map))
              (image (make-instance 'pixel-streamed-png
                                    :color-type :truecolor-alpha
                                    :width (array-dimension data 1)
-                                   :height (array-dimension data 0)))
-             (color-fn (ecase map-type
-                         (:default #'tile-rgba)
-                         (:biome-spread #'biome-spread-rgba)
-                         (:treasure #'treasure-rgba))))
+                                   :height (array-dimension data 0))))
         (zpng:start-png image stream)
         (dotimes (y (array-dimension data 0))
           (dotimes (x (array-dimension data 1))
