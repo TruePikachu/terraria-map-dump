@@ -1,13 +1,14 @@
 (defpackage :terraria-map-dump.tile
   (:nicknames :tmapdump.tile)
   (:use :common-lisp :tmapdump.binary-reader :tmapdump.color)
-  (:export :block-tile :empty-tile :fluid-tile :ground-tile :honey-tile
-           :lava-tile :make-block-tile :make-empty-tile :make-ground-tile
-           :make-honey-tile :make-lava-tile :make-sky-tile :make-wall-tile
-           :make-water-tile :read-tiles :set-game-info :sky-tile :tile
-           :tile-base-color :tile-id :tile-light-level :tile-name :tile-paint-id
-           :tile-raw-rgba :tile-rgba :tile-sets :tile-variation :wall-tile
-           :water-tile))
+  (:export :block-tile :elevation-profile :elevation-profile-rock-layer
+           :elevation-profile-world-surface :empty-tile :fluid-tile :ground-tile
+           :honey-tile :lava-tile :make-block-tile :make-elevation-profile
+           :make-empty-tile :make-ground-tile :make-honey-tile :make-lava-tile
+           :make-sky-tile :make-wall-tile :make-water-tile :read-tiles
+           :set-game-info :sky-tile :tile :tile-base-color :tile-id
+           :tile-light-level :tile-name :tile-paint-id :tile-raw-rgba :tile-rgba
+           :tile-sets :tile-variation :wall-tile :water-tile))
 (in-package :terraria-map-dump.tile)
 
 (defgeneric copy-tile-with-light (tile new-light))
@@ -43,6 +44,10 @@
 (defvar *sky-colors*)
 (defvar *wall-id-mapper*)
 (defvar *wall-info*)
+
+(defstruct elevation-profile
+  (world-surface 0 :type (unsigned-byte 32))
+  (rock-layer 0 :type (unsigned-byte 32)))
 
 (defstruct infos
   (name nil :type keyword :read-only t)

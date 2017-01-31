@@ -1,8 +1,9 @@
 (defpackage :terraria-map-dump.map
   (:nicknames :tmapdump.map)
   (:use :common-lisp :deflate :flex :tmapdump.binary-reader :tmapdump.tile)
-  (:export :minimap :minimap-data :minimap-file-revision :minimap-game-release
-           :minimap-world-name :minimap-world-id :read-map))
+  (:export :minimap :minimap-data :minimap-elevation-profile
+           :minimap-file-revision :minimap-game-release :minimap-world-name
+           :minimap-world-id :read-map))
 (in-package :terraria-map-dump.map)
 
 (defstruct minimap
@@ -11,6 +12,7 @@
   (file-revision 0 :type (unsigned-byte 32) :read-only t)
   (world-name "" :type string :read-only t)
   (world-id 0 :type (unsigned-byte 32) :read-only t)
+  (elevation-profile nil :type elevation-profile)
   (data #2A() :type (array tile 2) :read-only t))
 
 (defmacro with-inflated-stream ((inflated deflated) &body body)
@@ -87,4 +89,8 @@
           :file-revision file-revision
           :world-name world-name
           :world-id world-id
+          :elevation-profile (let ((surface (* height 0.3)))
+                               (make-elevation-profile
+                                 :world-surface (round surface)
+                                 :rock-layer (round (+ surface (* height 0.2)))))
           :data (read-map-data stream height width))))))
