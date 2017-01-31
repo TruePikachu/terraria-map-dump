@@ -12,7 +12,7 @@
 (in-package :terraria-map-dump.tile)
 
 (defgeneric copy-tile-with-light (tile new-light))
-(defgeneric tile-base-color (tile &optional y h)
+(defgeneric tile-base-color (tile &optional y profile)
   (:documentation
     "Unlit, unpainted COLOR of TILE"))
 (defgeneric tile-id (tile)
@@ -74,8 +74,8 @@
              (:include tile
                        (light 0)))
   "Tile which has unknown content")
-(defmethod tile-base-color ((this empty-tile) &optional y h)
-  (declare (ignore y h))
+(defmethod tile-base-color ((this empty-tile) &optional y profile)
+  (declare (ignore y profile))
   *empty-color*)
 (defmethod tile-name ((this empty-tile))
   nil)
@@ -98,8 +98,8 @@
 (defstruct (block-tile
              (:include id-tile))
   "Tile which contains a block")
-(defmethod tile-base-color ((this block-tile) &optional y h)
-  (declare (ignore y h))
+(defmethod tile-base-color ((this block-tile) &optional y profile)
+  (declare (ignore y profile))
   (elt (infos-colors (elt *block-info* (block-tile-id this)))
        (block-tile-choice this)))
 (defmethod tile-name ((this block-tile))
@@ -109,8 +109,8 @@
 (defstruct (wall-tile
              (:include id-tile))
   "Tile which contains a wall")
-(defmethod tile-base-color ((this wall-tile) &optional y h)
-  (declare (ignore y h))
+(defmethod tile-base-color ((this wall-tile) &optional y profile)
+  (declare (ignore y profile))
   (elt (infos-colors (elt *wall-info* (wall-tile-id this)))
        (wall-tile-choice this)))
 (defmethod tile-name ((this wall-tile))
@@ -125,22 +125,22 @@
   "Tile which contains water")
 (defmethod tile-name ((this water-tile))
   :water)
-(defmethod tile-base-color ((this water-tile) &optional y h)
-  (declare (ignore y h))
+(defmethod tile-base-color ((this water-tile) &optional y profile)
+  (declare (ignore y profile))
   (elt *fluid-colors* 0))
 (defstruct (lava-tile
              (:include fluid-tile))
   "Tile which contains lava")
-(defmethod tile-base-color ((this lava-tile) &optional y h)
-  (declare (ignore y h))
+(defmethod tile-base-color ((this lava-tile) &optional y profile)
+  (declare (ignore y profile))
   (elt *fluid-colors* 1))
 (defmethod tile-name ((this lava-tile))
   :lava)
 (defstruct (honey-tile
              (:include fluid-tile))
   "Tile which contains honey")
-(defmethod tile-base-color ((this honey-tile) &optional y h)
-  (declare (ignore y h))
+(defmethod tile-base-color ((this honey-tile) &optional y profile)
+  (declare (ignore y profile))
   (elt *fluid-colors* 2))
 (defmethod tile-name ((this honey-tile))
   :honey)
@@ -158,9 +158,9 @@
 (defstruct (sky-tile
              (:include tile))
   "Tile which displays sky or hell")
-(defmethod tile-base-color ((this sky-tile) &optional y h)
+(defmethod tile-base-color ((this sky-tile) &optional y profile)
   ; TODO Better algorithm
-  (if (and y h (> y (/ h 2)))
+  (if (and y profile (> y (elevation-profile-rock-layer profile)))
     *hell-color*
     (elt *sky-colors* 127)))
 (defmethod tile-name ((this sky-tile))
@@ -168,9 +168,9 @@
 (defstruct (ground-tile
              (:include variant-tile))
   "Tile which displays an underground background")
-(defmethod tile-base-color ((this ground-tile) &optional y h)
+(defmethod tile-base-color ((this ground-tile) &optional y profile)
   ; TODO Better algorithm
-  (declare (ignore y h))
+  (declare (ignore y profile))
   (elt *rock-colors* (ground-tile-variation this)))
 (defmethod tile-name ((this ground-tile))
   :underground)
@@ -305,9 +305,9 @@
     (30 (%rgba 200 200 200 150))
     (otherwise (%rgba 255 255 255))))
 
-(defun tile-raw-rgba (tile &optional y h)
+(defun tile-raw-rgba (tile &optional y profile)
   "COLOR of TILE, ignoring light"
-  (let* ((base-color (tile-base-color tile y h))
+  (let* ((base-color (tile-base-color tile y profile))
          (paint-color (paint-base-color (tile-paint-id tile)))
          (brightest-value (max (color-r base-color)
                                (color-g base-color)
@@ -333,9 +333,9 @@
           (otherwise (scale-color paint-color
                                   (/ brightest-value 255))))))))
 
-(defun tile-rgba (tile &optional y h)
+(defun tile-rgba (tile &optional y profile)
   "COLOR of TILE, including light"
-  (let ((unlit-color (tile-raw-rgba tile y h))
+  (let ((unlit-color (tile-raw-rgba tile y profile))
         (light-amount (/ (tile-light-level tile) 255)))
     (if (= light-amount 1)
       unlit-color

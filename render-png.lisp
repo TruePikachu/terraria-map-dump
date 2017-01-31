@@ -4,24 +4,24 @@
   (:export :biome-spread-rgba :dull-tile-rgba :render-png :treasure-rgba))
 (in-package :terraria-map-dump.render-png)
 
-(defun dull-tile-rgba (tile y h)
+(defun dull-tile-rgba (tile y profile)
   "Renders tiles grayscale at 50% normal transparency"
   (let ((color (grayscale-color
-                 (tile-rgba tile y h))))
+                 (tile-rgba tile y profile))))
     (%rgba (color-r color) (color-g color) (color-b color)
            (round (color-a color) 2))))
 
-(defun biome-spread-rgba (tile y h)
+(defun biome-spread-rgba (tile y profile)
   (let ((sets (when (or (typep tile 'block-tile)
                         (typep tile 'wall-tile))
                 (tile-sets tile))))
     (if (or (find :corrupt sets)
             (find :crimson sets)
             (find :hallow sets))
-      (tile-raw-rgba tile y h)
-      (dull-tile-rgba tile y h))))
+      (tile-raw-rgba tile y profile)
+      (dull-tile-rgba tile y profile))))
 
-(defun treasure-rgba (tile y h)
+(defun treasure-rgba (tile y profile)
   (if (and (typep tile 'block-tile)
            (find (tile-id tile) (list 6 ; Iron Ore
                                       7 ; Copper Ore
@@ -61,8 +61,8 @@
                                       331 ; Silver Coin Pile
                                       332 ; Gold Coin Pile
                                       333))); Platinum Coin Pile
-    (tile-raw-rgba tile y h)
-    (dull-tile-rgba tile y h)))
+    (tile-raw-rgba tile y profile)
+    (dull-tile-rgba tile y profile)))
 
 
 (defun render-png (map file-or-stream &optional (color-fn #'tile-rgba))
@@ -83,7 +83,7 @@
         (zpng:start-png image stream)
         (dotimes (y (array-dimension data 0))
           (dotimes (x (array-dimension data 1))
-            (let ((color (funcall color-fn (aref data y x) y (array-dimension data 0))))
+            (let ((color (funcall color-fn (aref data y x) y (minimap-elevation-profile map))))
               (write-pixel (coerce color 'list) image))))
         (zpng:finish-png image))))
   file-or-stream)
