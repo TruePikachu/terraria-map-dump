@@ -231,6 +231,23 @@
         (loop for i from 0 to rle-count
               collect base-tile)))))
 
+(defun get-info (release)
+  (macrolet ((foo
+               (release)
+               (let ((game-infos
+                       (directory (merge-pathnames
+                                    #P"game-info/*.sexp"
+                                    (asdf:system-source-directory
+                                      :terraria-map-dump)))))
+                 `(ecase ,release
+                    ,@(loop for release in game-infos
+                            collect `(,(parse-integer
+                                         (pathname-name release))
+                                       (quote ,(with-open-file
+                                                 (in release)
+                                                 (read in)))))))))
+    (foo release)))
+
 (defun set-game-info (release)
   "Set the game-info data for RELEASE"
   (labels ((parse-color
@@ -263,16 +280,7 @@
                                (coerce info '(vector infos))
                                (coerce mapper '(vector integer)))))))
     (let ((root-game-info
-            (with-open-file
-              (in (make-pathname
-                    :name (format nil "~A" release)
-                    :type "sexp"
-                    :defaults (merge-pathnames
-                                #P"game-info/"
-                                (asdf:system-source-directory
-                                  :terraria-map-dump)))
-                  :if-does-not-exist :error)
-              (read in))))
+            (get-info release)))
       (setf *dirt-colors* (parse-color-list (cdr (assoc :dirt root-game-info))))
       (setf *empty-color* (parse-color (cdr (assoc :empty root-game-info))))
       (setf (values
