@@ -232,21 +232,31 @@
               collect base-tile)))))
 
 (defun get-info (release)
-  (macrolet ((foo
-               (release)
-               (let ((game-infos
-                       (directory (merge-pathnames
-                                    #P"game-info/*.sexp"
-                                    (asdf:system-source-directory
-                                      :terraria-map-dump)))))
-                 `(ecase ,release
-                    ,@(loop for release in game-infos
-                            collect `(,(parse-integer
-                                         (pathname-name release))
-                                       (quote ,(with-open-file
-                                                 (in release)
-                                                 (read in)))))))))
-    (foo release)))
+  (labels ((use-file (file) (with-open-file (in file) (return-from get-info (read in))))
+           (try-use-file (file) (when (probe-file file) (use-file file))))
+    (try-use-file (format nil "./game-info-~D.sexp" release))
+    (let ((builtin-info
+            (macrolet
+              ((foo
+                 (release)
+                 (let ((game-infos
+                         (directory (merge-pathnames
+                                      #P"game-info/*.sexp"
+                                      (asdf:system-source-directory
+                                        :terraria-map-dump)))))
+                   `(case ,release
+                      ,@(loop for release in game-infos
+                              collect `(,(parse-integer
+                                           (pathname-name release))
+                                         (quote ,(with-open-file
+                                                   (in release)
+                                                   (read in)))))))))
+              (foo release))))
+      (when builtin-info (return-from get-info builtin-info)))
+    #+ASDF (try-use-file (merge-pathnames
+                           (format nil "game-info/~D.sexp" release)
+                           (asdf:system-source-directory :terraria-map-dump)))
+    (error "Can't locate information for release ~D." release)))
 
 (defun set-game-info (release)
   "Set the game-info data for RELEASE"
